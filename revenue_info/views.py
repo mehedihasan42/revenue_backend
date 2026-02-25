@@ -1,45 +1,32 @@
 from google.oauth2.credentials import Credentials
-from django.shortcuts import render
-from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework.decorators import api_view,permission_classes
+from rest_framework.response import Response
+from rest_framework.viewsets import ReadOnlyModelViewSet,ModelViewSet
+from django.shortcuts import redirect
 from .models import Song
 from .serializers import SongSerializer
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from .services.youtube_data import get_all_videos
-from .services.youtube_analytics import get_video_revenue
 from .utils.youtube import extract_video_id
-from django.shortcuts import redirect
 from .services.youtube_auth import get_auth_flow
+from .services.youtube_data import get_video_details
+from .services.youtube_analytics import get_video_revenue
+from rest_framework.permissions import AllowAny
 
-# Create your views here.
-# views.py
 
-
-class SongViewSet(ReadOnlyModelViewSet):
+class SongViewSet(ModelViewSet):
     queryset = Song.objects.all()
     serializer_class = SongSerializer
-
-
-def save_song(video_id, title, views, revenue):
-    Song.objects.update_or_create(
-        video_id=video_id,
-        defaults={
-            'title': title,
-            'views': views,
-            'revenue': revenue
-        }
-    )
+    permission_classes = [AllowAny]
 
 
 def youtube_login(request):
     flow = get_auth_flow()
     auth_url, state = flow.authorization_url(
-        access_type='offline',
-        include_granted_scopes='true'
+        access_type='offline',        # important for refresh token
+        include_granted_scopes='true',
+        prompt='consent'             # important! forces refresh_token each time
     )
     request.session['state'] = state
     return redirect(auth_url)
-
 
 
 def oauth_callback(request):
@@ -56,49 +43,45 @@ def oauth_callback(request):
         'scopes': credentials.scopes,
     }
 
-    return redirect('/dashboard/')
+    return redirect("http://localhost:5173")
+
 
 def get_credentials_from_session(request):
     creds = request.session.get('credentials')
     if not creds:
         return None
-
     return Credentials(**creds)
 
 
 @api_view(['POST'])
-def fetch_and_save_all_videos(request):
+@permission_classes([AllowAny])
+def fetch_video_from_url(request):
     credentials = get_credentials_from_session(request)
     if not credentials:
         return Response({'error': 'Not authenticated'}, status=401)
 
-    videos = get_all_videos(credentials)
+    url = request.data.get('url')
+    if not url:
+        return Response({'error': 'YouTube URL required'}, status=400)
 
-    saved = 0
-    for v in videos:
-        video_id = v['snippet']['resourceId']['videoId']
-        title = v['snippet']['title']
+    video_id = extract_video_id(url)
+    if not video_id:
+        return Response({'error': 'Invalid YouTube URL'}, status=400)
 
-        views, revenue = get_video_revenue(credentials, video_id)
+    title, views = get_video_details(credentials, video_id)
+    views_analytics, revenue = get_video_revenue(credentials, video_id)
 
-        Song.objects.update_or_create(
-            video_id=video_id,
-            defaults={
-                'title': title,
-                'views': views,
-                'revenue': revenue
-            }
-        )
-        saved += 1
+    song, _ = Song.objects.update_or_create(
+        video_id=video_id,
+        defaults={
+            'url': url,
+            'title': title,
+            'views': views_analytics or views,
+            'revenue': revenue
+        }
+    )
 
-    return Response({'message': f'{saved} videos saved'})
-
-
-
-@api_view(['POST'])
-def save_song_api(request):
-    serializer = SongSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response({'message': 'Saved successfully'})
-    return Response(serializer.errors, status=400)
+    return Response({
+        'message': 'Video saved successfully',
+        'data': SongSerializer(song).data
+    })

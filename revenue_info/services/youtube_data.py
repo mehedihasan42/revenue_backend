@@ -1,26 +1,18 @@
-# services/youtube_data.py
 from googleapiclient.discovery import build
 
-def get_all_videos(credentials):
+def get_video_details(credentials, video_id):
     youtube = build('youtube', 'v3', credentials=credentials)
 
-    channel = youtube.channels().list(
-        part='contentDetails',
-        mine=True
+    response = youtube.videos().list(
+        part='snippet,statistics',
+        id=video_id
     ).execute()
 
-    uploads_playlist_id = channel['items'][0]['contentDetails']['relatedPlaylists']['uploads']
+    if not response['items']:
+        return None, 0
 
-    videos = []
-    request = youtube.playlistItems().list(
-        part='snippet',
-        playlistId=uploads_playlist_id,
-        maxResults=50
-    )
+    item = response['items'][0]
+    title = item['snippet']['title']
+    views = int(item['statistics'].get('viewCount', 0))
 
-    while request:
-        response = request.execute()
-        videos.extend(response['items'])
-        request = youtube.playlistItems().list_next(request, response)
-
-    return videos
+    return title, views

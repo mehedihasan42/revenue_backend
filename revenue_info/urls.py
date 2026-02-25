@@ -1,26 +1,20 @@
-# urls.py
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 from .views import (
     SongViewSet,
     youtube_login,
     oauth_callback,
-    fetch_and_save_all_videos,
-    save_song_api
+    fetch_video_from_url
 )
 
 router = DefaultRouter()
 router.register(r'songs', SongViewSet, basename='songs')
 
 urlpatterns = [
-    # OAuth
-    path('oauth/login/', youtube_login, name='youtube-login'),
-    path('oauth/callback/', oauth_callback, name='oauth-callback'),
-
-    # Custom APIs
-    path('save-song/', fetch_and_save_all_videos, name='fetch_and_save_all_videos-song'),
-    path('save-song/', save_song_api, name='save-song'),
+    path('oauth/login/', youtube_login),
+    path('oauth/callback/', oauth_callback),
+    path('video/fetch/', fetch_video_from_url),
+    # path('video/delete/<int:id>/', SongViewSet),
 ]
 
-# Include router URLs
 urlpatterns += router.urls
