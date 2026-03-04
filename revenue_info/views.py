@@ -85,3 +85,11 @@ def fetch_video_from_url(request):
         'message': 'Video saved successfully',
         'data': SongSerializer(song).data
     })
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def check_auth(request):
+    if request.session.get('credentials'):
+        return Response({'authenticated': True})
+    return Response({'authenticated': False})

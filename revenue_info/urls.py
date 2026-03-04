@@ -4,7 +4,8 @@ from .views import (
     SongViewSet,
     youtube_login,
     oauth_callback,
-    fetch_video_from_url
+    fetch_video_from_url,
+    check_auth
 )
 
 router = DefaultRouter()
@@ -14,6 +15,7 @@ urlpatterns = [
     path('oauth/login/', youtube_login),
     path('oauth/callback/', oauth_callback),
     path('video/fetch/', fetch_video_from_url),
+    path('auth/check/', check_auth),
     # path('video/delete/<int:id>/', SongViewSet),
 ]
 
