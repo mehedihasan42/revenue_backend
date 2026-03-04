@@ -22,5 +22,5 @@ def get_auth_flow():
     "https://www.googleapis.com/auth/yt-analytics-monetary.readonly",
      ],
 
-        redirect_uri="http://localhost:8000/api/oauth/callback/"
+        redirect_uri="https://revenue-backend-sp63.onrender.com/api/oauth/callback/"
     )
