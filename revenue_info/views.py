@@ -43,7 +43,7 @@ def oauth_callback(request):
         'scopes': credentials.scopes,
     }
 
-    return redirect("http://localhost:5173")
+    return redirect("https://clap-revenus.netlify.app")
 
 
 def get_credentials_from_session(request):
