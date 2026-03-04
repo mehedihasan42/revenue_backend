@@ -93,3 +93,4 @@ def check_auth(request):
     if request.session.get('credentials'):
         return Response({'authenticated': True})
     return Response({'authenticated': False})
+
